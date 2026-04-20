@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://YOUR-RENDER-BACKEND-URL.onrender.com/api/$1"
+      "destination": "https://infrawatch-backend-odou.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",
