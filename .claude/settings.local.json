@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -f \"C:/Users/thede/OneDrive/Desktop/Projects/illegalconstrucion/server/db/infrawatch.db\" \"C:/Users/thede/OneDrive/Desktop/Projects/illegalconstrucion/server/db/infrawatch.db-wal\" \"C:/Users/thede/OneDrive/Desktop/Projects/illegalconstrucion/server/db/infrawatch.db-shm\")",
+      "Bash(node db/seed.js)",
+      "Bash(xargs grep *)",
+      "Bash(npx kill-port *)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s -X POST http://localhost:3002/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@infrawatch.gov.in\",\"password\":\"infrawatch123\"}')",
+      "Bash(node -pe ' *)",
+      "Bash(node -e ' *)",
+      "Bash(node -pe \"const d = JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\); 'plan length: ' + d.plan.length + ', first: ' + d.plan[0].hotspot.name\")",
+      "Bash(node -pe \"Object.keys\\(JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\).settings\\).join\\(', '\\)\")",
+      "Bash(node -pe \"const d = JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\); d.crisisLevel + ' | ' + d.metrics.critical + ' critical | ' + d.criticalCases.length + ' cases'\")",
+      "Bash(node -pe \"const d = JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\); 'OK: ' + d.violation.id + ' | ' + d.violation.confidence + '% | ' + d.violation.status\")",
+      "Bash(node -pe \"const d = JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\); 'Detail: ' + d.violation.id + ' | confidence ' + d.violation.confidence + '% | status ' + d.violation.status\")",
+      "Bash(curl -s http://localhost:3002/api/health)",
+      "Bash(node -pe \"const d = JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\); 'Answer \\(first 200 chars\\): ' + \\(d.answer || 'NO ANSWER'\\).slice\\(0, 200\\)\")",
+      "Bash(node -pe \"const d = JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\); d.answer ? 'Gemini answered: ' + d.answer.slice\\(0, 250\\) : 'ERROR: ' + JSON.stringify\\(d\\)\")",
+      "Bash(node -pe \"const d = JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\); d.answer ? 'SUCCESS: ' + d.answer.slice\\(0, 200\\) : 'FAILED: ' + \\(d.error || ''\\).slice\\(0, 250\\)\")",
+      "Bash(node -pe \"const d = JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\); d.answer ? 'SUCCESS: ' + d.answer.slice\\(0, 200\\) : 'FAILED: ' + \\(d.error || ''\\).slice\\(0, 300\\)\")",
+      "Bash(node -pe \"const d = JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\); 'Provider: ' + d.provider + ' | Model: ' + d.model\")",
+      "Bash(node -pe \"const d = JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\); d.answer ? 'OK: ' + d.answer.slice\\(0, 200\\) : 'FAIL: ' + JSON.stringify\\(d\\).slice\\(0,200\\)\")"
+    ]
+  }
+}

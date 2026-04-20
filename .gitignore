@@ -1,0 +1,36 @@
+# ── Secrets — NEVER commit ────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ── Node ──────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Build artifacts ───────────────────────────────────────────────────────
+client/dist/
+client/build/
+server/dist/
+*.log
+
+# ── Editor / OS ───────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Database (local dev state) ────────────────────────────────────────────
+server/db/*.db
+server/db/*.sqlite
+server/db/*.sqlite-journal
+
+# ── Temporary ─────────────────────────────────────────────────────────────
+*.tmp
+*.bak
+.cache/
