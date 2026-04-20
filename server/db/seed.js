@@ -4,30 +4,42 @@ import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
-// Must initialize the async sql.js database before using it
-await initDb();
-const db = getDb();
+/**
+ * Run the full seed. Called either:
+ *   - by `npm run seed` (standalone CLI script)
+ *   - automatically from server/index.js on first boot if the DB is empty
+ *
+ * Safe to re-run — drops & recreates all tables.
+ */
+export async function runSeed() {
+  await initDb();
+  const db = getDb();
 
-// Clear existing data (disable FK checks, drop and recreate)
-db.pragma('foreign_keys = OFF');
-db.exec(`
-  DROP TABLE IF EXISTS activity_logs;
-  DROP TABLE IF EXISTS ai_case_reviews;
-  DROP TABLE IF EXISTS image_analyses;
-  DROP TABLE IF EXISTS notes;
-  DROP TABLE IF EXISTS notices;
-  DROP TABLE IF EXISTS notice_templates;
-  DROP TABLE IF EXISTS otp_tokens;
-  DROP TABLE IF EXISTS violations;
-  DROP TABLE IF EXISTS settings;
-  DROP TABLE IF EXISTS users;
-`);
-db.pragma('foreign_keys = ON');
+  // Clear existing data (disable FK checks, drop and recreate)
+  db.pragma('foreign_keys = OFF');
+  db.exec(`
+    DROP TABLE IF EXISTS activity_logs;
+    DROP TABLE IF EXISTS ai_case_reviews;
+    DROP TABLE IF EXISTS image_analyses;
+    DROP TABLE IF EXISTS notes;
+    DROP TABLE IF EXISTS notices;
+    DROP TABLE IF EXISTS notice_templates;
+    DROP TABLE IF EXISTS otp_tokens;
+    DROP TABLE IF EXISTS violations;
+    DROP TABLE IF EXISTS settings;
+    DROP TABLE IF EXISTS users;
+  `);
+  db.pragma('foreign_keys = ON');
 
-// Recreate schema
-const __dirname2 = dirname(fileURLToPath(import.meta.url));
-const schema = readFileSync(join(__dirname2, 'schema.sql'), 'utf-8');
-db.exec(schema);
+  // Recreate schema
+  const __dirname2 = dirname(fileURLToPath(import.meta.url));
+  const schema = readFileSync(join(__dirname2, 'schema.sql'), 'utf-8');
+  db.exec(schema);
+
+  return _seedBody(db);
+}
+
+async function _seedBody(db) {
 
 // ── CONSTANTS (from original) ────────────────────────────────────────────────
 const WARDS = ["Koramangala","Whitefield","HSR Layout","Jayanagar","Hebbal","Indiranagar","Rajajinagar","Yelahanka","Banashankari","Marathahalli","BTM Layout","JP Nagar","Malleswaram","Sadashivanagar","Electronic City"];
@@ -225,16 +237,30 @@ insertSetting.run('integrations', JSON.stringify([
   { name: "Webhook Endpoint", status: "ERROR", lastSync: "6 hours ago", records: "—" },
 ]));
 
-console.log('✓ Database seeded successfully');
-console.log(`  - ${users.length} officers`);
-console.log('  - 214 violations');
-console.log('  - 3 notice templates');
-console.log(`  - ${logs.length} activity logs`);
-console.log('  - Settings configured');
-console.log('');
-console.log('Login credentials:');
-console.log('  Email: admin@infrawatch.gov.in');
-console.log('  Password: infrawatch123');
-console.log('  (Or use OTP — code will print to server console)');
+  console.log('✓ Database seeded successfully');
+  console.log(`  - ${users.length} officers`);
+  console.log('  - 214 violations');
+  console.log('  - 3 notice templates');
+  console.log(`  - ${logs.length} activity logs`);
+  console.log('  - Settings configured');
+  console.log('');
+  console.log('Login credentials:');
+  console.log('  Email: admin@infrawatch.gov.in');
+  console.log('  Password: infrawatch123');
+  console.log('  (Or use OTP — code will print to server console)');
 
-process.exit(0);
+  return { users: users.length, violations: 214 };
+} // end of _seedBody
+
+// ── CLI entry point ────────────────────────────────────────────────────────
+// Runs only if this file is invoked directly (e.g. `node db/seed.js` or `npm run seed`).
+// Auto-seed from server/index.js imports runSeed() directly and skips this.
+const isMainModule = import.meta.url === `file://${process.argv[1]?.replace(/\\/g, '/')}`;
+if (isMainModule || process.argv[1]?.endsWith('seed.js')) {
+  runSeed()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error('[seed] failed:', err);
+      process.exit(1);
+    });
+}

@@ -20,7 +20,9 @@
       "Bash(node -pe \"const d = JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\); d.answer ? 'SUCCESS: ' + d.answer.slice\\(0, 200\\) : 'FAILED: ' + \\(d.error || ''\\).slice\\(0, 250\\)\")",
       "Bash(node -pe \"const d = JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\); d.answer ? 'SUCCESS: ' + d.answer.slice\\(0, 200\\) : 'FAILED: ' + \\(d.error || ''\\).slice\\(0, 300\\)\")",
       "Bash(node -pe \"const d = JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\); 'Provider: ' + d.provider + ' | Model: ' + d.model\")",
-      "Bash(node -pe \"const d = JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\); d.answer ? 'OK: ' + d.answer.slice\\(0, 200\\) : 'FAIL: ' + JSON.stringify\\(d\\).slice\\(0,200\\)\")"
+      "Bash(node -pe \"const d = JSON.parse\\(require\\('fs'\\).readFileSync\\(0,'utf8'\\)\\); d.answer ? 'OK: ' + d.answer.slice\\(0, 200\\) : 'FAIL: ' + JSON.stringify\\(d\\).slice\\(0,200\\)\")",
+      "Bash(rm -f server/db/infrawatch.db)",
+      "Bash(npm run *)"
     ]
   }
 }

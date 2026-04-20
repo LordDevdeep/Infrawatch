@@ -102,18 +102,25 @@ git push -u origin main
 
 ---
 
-## Part 5 — Seed the production database (5 min)
+## Part 5 — Database is auto-seeded ✅
 
-Your Render backend starts with an empty database. Seed it with demo data:
+Nothing to do here. On first boot, if the database is empty, the server automatically runs the seed script (218 violations across 15 wards, 6 officers, activity logs, notice templates). You'll see this in the Render logs:
 
-1. In Render dashboard, open your service → **Shell** tab
-2. Run:
-```bash
-node db/seed.js
 ```
-3. Wait for `✓ Database seeded successfully`. Done.
+[boot] Database is empty — running auto-seed...
+✓ Database seeded successfully
+[boot] Auto-seed complete.
+```
 
-⚠️ Render free tier resets the filesystem on redeploy, so you may need to re-seed after pushing new code. For the demo session, seed once and don't re-push until after submission.
+On subsequent restarts (when data is already there), it skips the seed:
+
+```
+[boot] Database already has 6 users — skipping auto-seed.
+```
+
+⚠️ Render free tier resets the filesystem on redeploy, so every time you push new code the DB is re-seeded automatically. That's by design — keeps the demo consistent.
+
+To disable auto-seeding in production (e.g. if you ever move to a persistent Postgres), set env var `AUTO_SEED=false` in Render.
 
 ---
 
