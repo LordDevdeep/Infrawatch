@@ -343,10 +343,17 @@ export default function RealTimeSatelliteDetection({ initialViolation }) {
       } : null,
     };
 
+    // 30-second client-side timeout with graceful message
+    const controller = new AbortController();
+    const slowTimer = setTimeout(() => {
+      setAnalysisStage('AI service is slow — retrying with fallback provider...');
+    }, 10000);
+    const hardTimer = setTimeout(() => controller.abort(), 30000);
+
     try {
       setAnalysisStage('AI analyzing satellite imagery...');
-      
-      // Call our backend which uses Gemini Vision
+
+      // Call our backend which uses Gemini Vision (auto-fails over to Groq on rate-limit)
       const response = await fetch('/api/vision/analyze-single', {
         method: 'POST',
         headers: {
@@ -357,15 +364,20 @@ export default function RealTimeSatelliteDetection({ initialViolation }) {
           image: { dataUrl: imageDataUrl },
           locationContext,
         }),
+        signal: controller.signal,
       });
 
+      clearTimeout(slowTimer);
+      clearTimeout(hardTimer);
+
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Analysis failed');
+        const errData = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(errData.error || `AI service returned ${response.status}`);
       }
 
       setAnalysisStage('Processing results...');
       const data = await response.json();
+      if (data._provider) console.log('[AI] answered by:', data._provider, data.fallback ? '(fallback)' : '(primary)');
       
       const result = {
         ...data,
@@ -391,8 +403,14 @@ export default function RealTimeSatelliteDetection({ initialViolation }) {
       }
 
     } catch (err) {
-      console.error('Analysis error:', err);
-      setError(err.message);
+      clearTimeout(slowTimer);
+      clearTimeout(hardTimer);
+      console.error('[AI] Analysis error:', err);
+      if (err.name === 'AbortError') {
+        setError('AI service timeout — both Gemini and Groq are slow right now. Please try again in a moment.');
+      } else {
+        setError(err.message || 'AI analysis failed — the AI service may be temporarily unavailable.');
+      }
     } finally {
       setIsAnalyzing(false);
       setAnalysisStage('');

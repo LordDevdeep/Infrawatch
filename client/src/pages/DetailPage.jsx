@@ -338,7 +338,7 @@ Issued by: ${violation.officer_name || 'BBMP'} - BBMP ${violation.ward} Ward`;
     <div className="fi" style={{ padding: '18px 22px', overflowY: 'auto', height: '100%' }}>
       <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
         <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--sc)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-          {'<-'} Back to Violations
+          ← Back to Violations
         </button>
         {onNav && violation && (
           <button onClick={() => onNav('live-detection', violation)} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--bd)', background: 'none', border: 'none', cursor: 'pointer', padding: '3px 8px', borderRadius: 3, transition: 'all 150ms' }} onMouseEnter={(e) => { e.target.style.background = 'var(--ev)'; e.target.style.color = 'var(--am)'; }} onMouseLeave={(e) => { e.target.style.background = 'transparent'; e.target.style.color = 'var(--bd)'; }}>

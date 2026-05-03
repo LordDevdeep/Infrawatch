@@ -41,33 +41,78 @@ export async function runSeed() {
 
 async function _seedBody(db) {
 
-// ── CONSTANTS (from original) ────────────────────────────────────────────────
-const WARDS = ["Koramangala","Whitefield","HSR Layout","Jayanagar","Hebbal","Indiranagar","Rajajinagar","Yelahanka","Banashankari","Marathahalli","BTM Layout","JP Nagar","Malleswaram","Sadashivanagar","Electronic City"];
-const VTYPES = ["Unauthorized Floor Addition","No Building Permit","Encroachment on Public Land","Commercial Use in Residential Zone","Setback Violation","Illegal Basement Construction"];
-const ADDRS = ["6/7, Dr Rajkumar Road, Rajajinagar 1st Block, Bengaluru 560010","14/2, 4th Cross, Koramangala 5th Block, Bengaluru 560095","11, Outer Ring Road Service Lane, Marathahalli, Bengaluru 560037","112, 9th Main, Jayanagar 4th Block, Bengaluru 560011","13, Margosa Road, Malleswaram, Bengaluru 560003","91, 15th B Cross, Yelahanka Satellite Town, Bengaluru 560064","18, ITPL Back Gate Road, Whitefield, Bengaluru 560048","Survey No. 47, Whitefield Main Road, Bengaluru 560066","No. 8, 100 Feet Road, HSR Layout Sector 3, Bengaluru 560102","Plot 88, 3rd Cross, Banashankari 3rd Stage, Bengaluru 560085","No. 67, Marathahalli Bridge Road, Bengaluru 560037","Site No. 23, 5th Main, BTM 2nd Stage, Bengaluru 560076","No. 12, 18th Main, JP Nagar 6th Phase, Bengaluru 560078","No. 3, Palace Road, Sadashivanagar, Bengaluru 560080","Survey No. 89, Hosur Main Road, Electronic City, Bengaluru 560100"];
-const PENALTIES = [2.4,8.7,15.2,3.1,22.8,11.4,6.9,18.3,4.7,31.2,9.8,14.6,7.3,19.1,5.6];
-const OWNERS = ["Ramesh Babu Naidu","Surekha Patel","Mohan Krishnamurthy","Anita Desai","Venkat Raju","Lakshmi Bai","Arun Hegde","Sangeetha Rao"];
-const ZONES = ["Residential (R2)","Residential (R1)","Mixed Use (MU-1)","Commercial (C-1)","Residential (R3)"];
-const APPROVED_YEARS = [2019,2018,2020,2016,2021,2017,2022];
+// ── CONSTANTS — realistic Bengaluru data ────────────────────────────────────
+const WARDS = [
+  "Koramangala","Jayanagar","Indiranagar","Whitefield","HSR Layout",
+  "Malleshwaram","Basavanagudi","Yelahanka","Hebbal","Marathahalli",
+  "Bellandur","BTM Layout","Rajajinagar","Banashankari","JP Nagar"
+];
 
-// Ward center coordinates (lat, lng) for Bengaluru
+const VTYPES = [
+  "Unauthorized 4th floor construction",
+  "Setback violation - front",
+  "Commercial use in residential zone",
+  "No sanctioned plan",
+  "Encroachment on stormwater drain",
+  "Rooftop extension without permit",
+  "Basement conversion violation",
+];
+
+// Realistic Bengaluru street patterns — ward-specific addresses
+const ADDRS_BY_WARD = {
+  "Koramangala":     ["80 Feet Road, Koramangala 4th Block", "5th Block, Koramangala, near Forum Mall", "7th Block, 17th Main Road, Koramangala", "6th Block, 80 Feet Road, Koramangala", "1st Block, Koramangala Industrial Layout"],
+  "Jayanagar":       ["11th Main, 4th Block, Jayanagar", "9th Block, 22nd Cross, Jayanagar", "4th T Block, Jayanagar 560041", "3rd Block, 39th Cross, Jayanagar", "8th Block, Kanakapura Road, Jayanagar"],
+  "Indiranagar":     ["100 Feet Road, Indiranagar 1st Stage", "12th Main, HAL 2nd Stage, Indiranagar", "CMH Road, Indiranagar", "CMH Double Road, Indiranagar 560038", "Old Madras Road, Indiranagar"],
+  "Whitefield":      ["ITPL Main Road, Whitefield", "Hoodi Circle, Whitefield 560048", "Varthur Road, Whitefield", "Kadugodi Main Road, Whitefield", "Whitefield Main Road, opposite Phoenix Marketcity"],
+  "HSR Layout":      ["2nd Main, 4th Cross, HSR Sector 6", "27th Main, HSR Sector 2", "17th Cross, HSR Sector 7", "14th Main, HSR Sector 1", "5th A Cross, HSR Sector 3"],
+  "Malleshwaram":    ["Sampige Road, Malleshwaram 15th Cross", "8th Main, Malleshwaram 560003", "18th Cross, Malleshwaram", "Margosa Road, Malleshwaram", "11th Main, 17th Cross, Malleshwaram"],
+  "Basavanagudi":    ["Gandhi Bazaar Main Road, Basavanagudi", "DVG Road, Basavanagudi 560004", "Bull Temple Road, Basavanagudi", "North Road, Basavanagudi", "South End Road, Basavanagudi"],
+  "Yelahanka":       ["Ananthpura Gate, Yelahanka New Town", "Kogilu Main Road, Yelahanka", "Jakkur Main Road, Yelahanka 560064", "Attur Layout, Yelahanka", "Doddaballapur Road, Yelahanka"],
+  "Hebbal":          ["Ring Road, Hebbal Kempapura", "Outer Ring Road, Hebbal 560024", "Bellary Road, near Hebbal Flyover", "Nagawara Main Road, Hebbal", "Sahakarnagar, Hebbal"],
+  "Marathahalli":    ["Outer Ring Road, Marathahalli Bridge", "Kundalahalli Gate, Marathahalli", "Varthur Road, Marathahalli 560037", "Sai Baba Temple Road, Marathahalli", "AECS Layout, Marathahalli"],
+  "Bellandur":       ["Outer Ring Road, Bellandur 560103", "Devarabisanahalli, Bellandur", "Kariyammana Agrahara, Bellandur", "Iblur Village, Bellandur", "Sarjapur Road, near Bellandur Lake"],
+  "BTM Layout":      ["16th Main, BTM 2nd Stage", "29th Main, BTM 1st Stage", "100 Feet Ring Road, BTM Layout", "Silk Board Junction, BTM Layout", "Mico Layout, BTM 2nd Stage"],
+  "Rajajinagar":     ["1st Block, Rajajinagar Industrial Town", "Dr Rajkumar Road, Rajajinagar 6th Block", "5th Block, Rajajinagar 560010", "West of Chord Road, Rajajinagar", "60 Feet Road, Rajajinagar 2nd Block"],
+  "Banashankari":    ["Kanakapura Main Road, Banashankari 3rd Stage", "24th Main, Banashankari 2nd Stage", "100 Feet Ring Road, Banashankari", "Kathriguppe Main Road, BSK 3rd Stage", "Padmanabhanagar, Banashankari"],
+  "JP Nagar":        ["24th Main, JP Nagar 6th Phase", "15th Cross, JP Nagar 2nd Phase", "Bannerghatta Road, JP Nagar 560078", "7th Phase, JP Nagar, opposite Brigade Millennium", "Mico Layout, JP Nagar"],
+};
+
+const PENALTIES = [2.4,3.1,4.7,5.6,6.9,7.3,8.7,9.8,11.4,14.6,15.2,18.3,19.1,22.8,31.2];
+
+const OWNERS = [
+  "Ramesh Babu Naidu","Surekha Patel","Mohan Krishnamurthy","Anita Desai","Venkat Raju",
+  "Lakshmi Bai","Arun Hegde","Sangeetha Rao","Nagesh Shetty","Meera Iyengar",
+  "Harish Gowda","Kavya Shenoy","Pradeep Bhat","Shobha Chandrashekar","Mahesh Prabhu",
+  "Geetha Ramanna","Vijay Anand","Deepa Kulkarni","Raghavendra Rao","Nandini Acharya",
+  "Siddharth Hegde","Anjali Menon","Krishnamurthy S","Radhika Vaidyanathan","Naveen Kumar",
+];
+
+const ZONES = ["Residential (R2)","Residential (R1)","Mixed Use (MU-1)","Commercial (C-1)","Residential (R3)"];
+const APPROVED_YEARS = [2015,2016,2017,2018,2019,2020,2021,2022];
+
+// Ward center coordinates (lat, lng) for Bengaluru — real map-accurate coords
 const WARD_COORDS = {
   "Koramangala":    [12.9352, 77.6245],
+  "Jayanagar":      [12.9250, 77.5838],
+  "Indiranagar":    [12.9784, 77.6408],
   "Whitefield":     [12.9698, 77.7500],
   "HSR Layout":     [12.9116, 77.6389],
-  "Jayanagar":      [12.9250, 77.5838],
-  "Hebbal":         [13.0358, 77.5970],
-  "Indiranagar":    [12.9784, 77.6408],
-  "Rajajinagar":    [12.9886, 77.5523],
+  "Malleshwaram":   [13.0035, 77.5708],
+  "Basavanagudi":   [12.9423, 77.5737],
   "Yelahanka":      [13.1007, 77.5963],
-  "Banashankari":   [12.9255, 77.5468],
+  "Hebbal":         [13.0358, 77.5970],
   "Marathahalli":   [12.9591, 77.7019],
+  "Bellandur":      [12.9257, 77.6761],
   "BTM Layout":     [12.9166, 77.6101],
+  "Rajajinagar":    [12.9886, 77.5523],
+  "Banashankari":   [12.9255, 77.5468],
   "JP Nagar":       [12.9063, 77.5857],
-  "Malleswaram":    [13.0035, 77.5708],
-  "Sadashivanagar": [13.0070, 77.5820],
-  "Electronic City":[12.8399, 77.6770],
 };
+
+// Hash helper for deterministic-but-varied pseudo-random
+function hashInt(seed, salt) {
+  return Math.abs(Math.floor(Math.sin(seed * 9301 + salt * 49297) * 233280) % 1000);
+}
 
 // ── SEED USERS ───────────────────────────────────────────────────────────────
 const passwordHash = bcrypt.hashSync('infrawatch123', 10);
@@ -78,12 +123,14 @@ const insertUser = db.prepare(`
 `);
 
 const users = [
-  { name: "Priya Menon",      email: "priya.menon@bbmp.gov.in",    phone: "+91-9876543210", role: "inspector",     wards: '["Koramangala","HSR Layout"]',  status: "active",   ago: "-1 hours" },
-  { name: "Rahul Sharma IAS", email: "rahul.sharma@bbmp.gov.in",   phone: "+91-9876543211", role: "commissioner",  wards: '"all"',                         status: "active",   ago: "-3 hours" },
-  { name: "Deepak Nair",      email: "deepak.nair@bbmp.gov.in",    phone: "+91-9876543212", role: "field_officer", wards: '["Whitefield","Hebbal"]',       status: "inactive", ago: "-2 days" },
-  { name: "Kavitha Reddy",    email: "kavitha.reddy@bbmp.gov.in",  phone: "+91-9876543213", role: "inspector",     wards: '["Jayanagar","JP Nagar"]',      status: "active",   ago: "-6 hours" },
-  { name: "Suresh Kumar",     email: "suresh.kumar@bbmp.gov.in",   phone: "+91-9876543214", role: "field_officer", wards: '["Electronic City"]',           status: "active",   ago: "-1 days" },
-  { name: "Admin User",       email: "admin@infrawatch.gov.in",    phone: "+91-9000000000", role: "admin",         wards: '"all"',                         status: "active",   ago: "-0 hours" },
+  { name: "Inspector Ramesh Kumar",  email: "ramesh.kumar@bbmp.gov.in",  phone: "+91-9876543210", role: "inspector",     wards: '["Koramangala","HSR Layout"]',     status: "active",   ago: "-1 hours" },
+  { name: "Inspector Priya Nair",    email: "priya.nair@bbmp.gov.in",    phone: "+91-9876543211", role: "inspector",     wards: '["Jayanagar","JP Nagar","BTM Layout"]', status: "active", ago: "-3 hours" },
+  { name: "Inspector Arjun Reddy",   email: "arjun.reddy@bbmp.gov.in",   phone: "+91-9876543212", role: "inspector",     wards: '["Whitefield","Marathahalli","Bellandur"]', status: "active", ago: "-2 hours" },
+  { name: "Inspector Kavitha Rao",   email: "kavitha.rao@bbmp.gov.in",   phone: "+91-9876543213", role: "inspector",     wards: '["Malleshwaram","Basavanagudi","Rajajinagar"]', status: "active", ago: "-6 hours" },
+  { name: "Officer Suresh Hegde",    email: "suresh.hegde@bbmp.gov.in",  phone: "+91-9876543214", role: "field_officer", wards: '["Yelahanka","Hebbal"]',           status: "active",   ago: "-1 days" },
+  { name: "Officer Deepak Shetty",   email: "deepak.shetty@bbmp.gov.in", phone: "+91-9876543215", role: "field_officer", wards: '["Banashankari","Indiranagar"]',   status: "active",   ago: "-4 hours" },
+  { name: "Rahul Sharma IAS",        email: "rahul.sharma@bbmp.gov.in",  phone: "+91-9876543216", role: "commissioner",  wards: '"all"',                            status: "active",   ago: "-2 hours" },
+  { name: "Admin User",              email: "admin@infrawatch.gov.in",   phone: "+91-9000000000", role: "admin",         wards: '"all"',                            status: "active",   ago: "-0 hours" },
 ];
 
 const userIds = {};
@@ -92,7 +139,10 @@ for (const u of users) {
   userIds[u.name] = info.lastInsertRowid;
 }
 
-const OFFICERS = ["Priya Menon","Rahul Sharma IAS","Deepak Nair","Kavitha Reddy","Suresh Kumar"];
+const OFFICERS = [
+  "Inspector Ramesh Kumar", "Inspector Priya Nair", "Inspector Arjun Reddy",
+  "Inspector Kavitha Rao", "Officer Suresh Hegde", "Officer Deepak Shetty",
+];
 
 // ── SEED VIOLATIONS ──────────────────────────────────────────────────────────
 const TODAY = new Date("2026-04-11T09:00:00+05:30");
@@ -114,17 +164,40 @@ const insertNote = db.prepare(`
   VALUES (?, ?, ?, ?, datetime('now'))
 `);
 
+// Status distribution targets ~ 15% NEW, 35% UNDER REVIEW, 30% NOTICE SENT, 15% RESOLVED, 5% DISMISSED
+// (ASSIGNED / IN_PROGRESS from spec map to UNDER REVIEW since the schema enum is fixed)
+function pickStatus(i, total) {
+  const r = (i * 37) % 100; // deterministic pseudo-random 0-99
+  if (r < 15) return "NEW";              // 15%
+  if (r < 50) return "UNDER REVIEW";     // 35%
+  if (r < 80) return "NOTICE SENT";      // 30%
+  if (r < 95) return "RESOLVED";         // 15%
+  return "DISMISSED";                    // 5%
+}
+
+// Confidence 62-97 (maps to 0.62-0.97 in user spec, integer in our schema)
+function pickConfidence(i) {
+  return 62 + ((i * 13 + 7) % 36); // 62..97
+}
+
 // Insert violations directly (no transaction wrapper - sql.js handles saves per-statement)
 for (let i = 0; i < 214; i++) {
-  const ageDays = i % 120;
+  // Spread over last 45 days with some clustering at recent dates
+  const ageDays = Math.floor((hashInt(i, 1) / 1000) * 45);
+  const ageHours = hashInt(i, 2) % 24;
   const dt = new Date(TODAY);
   dt.setDate(dt.getDate() - ageDays);
+  dt.setHours(9 + ageHours % 10);
 
-  const status = i < 56 ? "NEW" : i < 104 ? "UNDER REVIEW" : i < 146 ? "NOTICE SENT" : i < 191 ? "RESOLVED" : "DISMISSED";
+  const status = pickStatus(i, 214);
   const ward = WARDS[i % WARDS.length];
   const officerName = OFFICERS[i % OFFICERS.length];
   const officerId = userIds[officerName] || 1;
   const id = `#IW-${2847 + i}`;
+
+  // Pick a ward-specific realistic address
+  const wardAddrs = ADDRS_BY_WARD[ward] || ADDRS_BY_WARD["Koramangala"];
+  const addr = wardAddrs[i % wardAddrs.length] + ", Bengaluru";
 
   // Generate lat/lng with small random offset within ward
   const [baseLat, baseLng] = WARD_COORDS[ward];
@@ -133,12 +206,12 @@ for (let i = 0; i < 214; i++) {
 
   insertViolation.run(
     id,
-    ADDRS[i % ADDRS.length],
+    addr,
     ward,
     `Ward ${68 + (i % 15)}`,
     VTYPES[i % VTYPES.length],
     fmtDate(dt),
-    71 + ((i * 7) % 29),
+    pickConfidence(i),
     status,
     officerId,
     PENALTIES[i % PENALTIES.length],
@@ -147,14 +220,18 @@ for (let i = 0; i < 214; i++) {
     `${47 + (i % 153)}/${1 + (i % 4)}`,
     OWNERS[i % OWNERS.length],
     ZONES[i % 5],
-    APPROVED_YEARS[i % 7],
+    APPROVED_YEARS[i % APPROVED_YEARS.length],
     lat,
     lng
   );
 
-  // First violation gets a note
+  // Add officer notes to a handful of early cases for realism
   if (i === 0) {
-    insertNote.run(id, officerId, officerName, "Satellite imagery shows 3rd floor unauthorized addition. Owner yet to respond.");
+    insertNote.run(id, officerId, officerName, "Satellite imagery shows unauthorized 3rd floor addition. Owner notice delivered; awaiting response within statutory 7-day window.");
+  } else if (i === 3) {
+    insertNote.run(id, officerId, officerName, "Field inspection confirmed structural deviation from sanctioned plan. Property owner claims G+2 approval; records indicate G+1 only.");
+  } else if (i === 7) {
+    insertNote.run(id, officerId, officerName, "SWD encroachment verified — construction debris blocking natural drain. Escalating to Commissioner for stop-work order.");
   }
 }
 

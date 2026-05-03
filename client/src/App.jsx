@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import Sidebar from './components/layout/Sidebar';
+import Footer from './components/layout/Footer';
 import ViewSkeleton from './components/ui/Skeleton';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -11,10 +12,19 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
 import AIFeaturesDemo from './pages/AIFeaturesDemo';
 import RealTimeSatelliteDetection from './pages/RealTimeSatelliteDetection';
+import SDGPage from './pages/SDGPage';
+import CitizenReportPage from './pages/CitizenReportPage';
+
+// Check URL for public citizen-report route — accessible without login
+function isCitizenReportRoute() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('report') === '1' || window.location.pathname === '/report';
+}
 
 export default function App() {
   const { user, loading: authLoading } = useAuth();
   const [view, setView] = useState('dashboard');
+  const [publicRoute, setPublicRoute] = useState(isCitizenReportRoute() ? 'citizen-report' : null);
   const [detailViolation, setDetailViolation] = useState(null);
   const [mapViolation, setMapViolation] = useState(null);
   const [liveDetectionLocation, setLiveDetectionLocation] = useState(null);
@@ -62,7 +72,15 @@ export default function App() {
     );
   }
 
-  if (!user) return <LoginPage />;
+  // Public citizen-report portal — works without login
+  if (publicRoute === 'citizen-report') {
+    return <CitizenReportPage onBack={() => {
+      setPublicRoute(null);
+      window.history.pushState({}, '', '/');
+    }} />;
+  }
+
+  if (!user) return <LoginPage onOpenCitizenReport={() => setPublicRoute('citizen-report')} />;
 
   const renderView = () => {
     if (viewLoading) return <ViewSkeleton />;
@@ -75,15 +93,22 @@ export default function App() {
       case 'settings': return <SettingsPage />;
       case 'ai-features': return <AIFeaturesDemo />;
       case 'live-detection': return <RealTimeSatelliteDetection initialViolation={liveDetectionLocation} />;
+      case 'sdg': return <SDGPage onNav={navigate} />;
       default: return <DashboardPage onNav={navigate} />;
     }
   };
 
+  // Live Detection is a full-screen map experience — hide footer there to avoid clipping
+  const hideFooter = view === 'live-detection';
+
   return (
     <>
       <Sidebar view={view} onNav={navigate} />
-      <div style={{ marginLeft: 220, overflowY: 'auto', width: 'calc(100vw - 220px)', height: '100vh' }} key={view}>
-        {renderView()}
+      <div style={{ marginLeft: 220, overflowY: 'auto', width: 'calc(100vw - 220px)', height: '100vh', display: 'flex', flexDirection: 'column' }} key={view}>
+        <div style={{ flex: 1, minHeight: 0 }}>
+          {renderView()}
+        </div>
+        {!hideFooter && <Footer onNav={navigate} />}
       </div>
     </>
   );

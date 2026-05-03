@@ -130,6 +130,18 @@ function AIChatDemo() {
     setInput('');
     setIsLoading(true);
 
+    const controller = new AbortController();
+    const slowTimer = setTimeout(() => {
+      setMessages(prev => {
+        // Only show the "slow" notice if we're still loading
+        if (prev[prev.length - 1]?.role === 'user') {
+          return [...prev, { role: 'system', content: '⏳ AI service is slow — retrying with fallback provider...' }];
+        }
+        return prev;
+      });
+    }, 10000);
+    const hardTimer = setTimeout(() => controller.abort(), 30000);
+
     try {
       const token = localStorage.getItem('iw_token');
       const response = await fetch('/api/vision/chat', {
@@ -138,14 +150,37 @@ function AIChatDemo() {
         body: JSON.stringify({
           question: text,
           imageData: image,
-          conversationHistory: messages,
+          conversationHistory: messages.filter(m => m.role !== 'system'),
         }),
+        signal: controller.signal,
       });
 
+      clearTimeout(slowTimer);
+      clearTimeout(hardTimer);
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(errData.error || `AI service returned ${response.status}`);
+      }
+
       const data = await response.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.answer || 'No response.' }]);
+      if (data._provider) console.log('[AI] chat answered by:', data._provider);
+      // Strip the interim "slow" system message if present
+      setMessages(prev => {
+        const cleaned = prev.filter(m => m.role !== 'system');
+        return [...cleaned, { role: 'assistant', content: data.answer || 'No response from AI.' }];
+      });
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Error: ' + err.message }]);
+      clearTimeout(slowTimer);
+      clearTimeout(hardTimer);
+      console.error('[AI] chat error:', err);
+      const msg = err.name === 'AbortError'
+        ? '⚠️ AI timeout (30s) — both Gemini and Groq are unavailable right now. Please try again.'
+        : `⚠️ AI error: ${err.message}`;
+      setMessages(prev => {
+        const cleaned = prev.filter(m => m.role !== 'system');
+        return [...cleaned, { role: 'assistant', content: msg }];
+      });
     } finally {
       setIsLoading(false);
     }

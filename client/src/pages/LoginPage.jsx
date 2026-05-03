@@ -23,7 +23,7 @@ const DEMO_ACCOUNTS = [
   },
 ];
 
-export default function LoginPage() {
+export default function LoginPage({ onOpenCitizenReport }) {
   const { login } = useAuth();
   const [step, setStep] = useState('email'); // email | otp | password
   const [email, setEmail] = useState('');
@@ -222,8 +222,37 @@ export default function LoginPage() {
           )}
         </div>
 
+        {onOpenCitizenReport && (
+          <div style={{
+            marginTop: 18,
+            padding: '14px 16px',
+            background: 'rgba(52,199,89,0.06)',
+            border: '1px solid rgba(52,199,89,0.3)',
+            borderLeft: '3px solid #34C759',
+            borderRadius: 6,
+          }}>
+            <div style={{ fontSize: 11, color: '#34C759', fontWeight: 600, marginBottom: 4, letterSpacing: '0.05em' }}>
+              🏙️ NOT A BBMP OFFICER?
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--sc)', lineHeight: 1.5, marginBottom: 10 }}>
+              Citizens of Bengaluru can report illegal construction directly — no login required. Your report reaches BBMP enforcement within 24 hours.
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                window.history.pushState({}, '', '/?report=1');
+                onOpenCitizenReport();
+              }}
+              className="btn bs"
+              style={{ width: '100%', justifyContent: 'center', fontSize: 12 }}
+            >
+              🚨 Report a Violation (Public Portal)
+            </button>
+          </div>
+        )}
+
         <div style={{ textAlign: 'center', marginTop: 16, fontSize: 10, color: 'var(--mt)', fontFamily: 'Space Mono' }}>
-          BBMP Municipal Corporation - Bengaluru
+          BBMP Municipal Corporation · Bengaluru · SDG 11 + 16
         </div>
       </div>
     </div>

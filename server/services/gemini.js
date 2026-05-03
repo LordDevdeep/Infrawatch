@@ -92,7 +92,7 @@ async function generateWithGroq(violation, templateContent = null) {
         {
           role: 'system',
           content:
-            'You are a municipal enforcement drafting assistant for BBMP. Write concise, legally grounded notices suitable for officer review.',
+            'You are a senior BBMP legal draftsman for Bengaluru municipal enforcement. You cite only from: Karnataka Municipal Corporations Act 1976 (Sec 308, 321, 322), BBMP Building Bye-laws 2003, and Karnataka Town & Country Planning Act 1961. If unsure of a section number, say "Refer to applicable BBMP Building Bye-laws, 2003" instead of inventing it. Produce formal English notices ready for officer review. Follow the structure exactly as instructed in the user prompt.',
         },
         {
           role: 'user',
@@ -201,34 +201,65 @@ BBMP {ward} Ward`;
     .replace('{officer_name}', violation.officer_name || 'BBMP Official')
     .replace('{ward}', violation.ward || 'Bengaluru');
 
-  return `You are a legal notice expert for BBMP (Bengaluru municipal corporation) enforcement.
+  return `You are a senior BBMP legal draftsman generating a formal municipal enforcement notice for unauthorized construction in Bengaluru, Karnataka, India.
 
-Generate a professional, legally grounded enforcement notice based on this violation:
+═══════ APPLICABLE LEGAL FRAMEWORK ═══════
+You MUST cite only from these Indian statutes (do not invent sections):
 
+1. KARNATAKA MUNICIPAL CORPORATIONS ACT, 1976
+   • Section 308 — Building without sanctioned plan / deviation from plan
+   • Section 321 — Power to demolish; monetary penalty
+   • Section 322 — Stop-work notice for ongoing unauthorized construction
+   • Section 321A — Compounding fee provisions (where permissible)
+
+2. BBMP BUILDING BYE-LAWS, 2003
+   • Bye-law 2.2 — Setback requirements by plot size
+   • Bye-law 2.5 — Floor Area Ratio (FAR) and height
+   • Bye-law 3.0 — Change of land use / occupancy
+   • Bye-law 4.6 — Mandatory approval before commencement
+
+3. KARNATAKA TOWN AND COUNTRY PLANNING ACT, 1961
+   • Section 14 — Planning authority control over development
+   • Section 15 — Penalty for unauthorized development
+   • Section 76-FF — Offences & prosecution
+
+═══════ ANTI-HALLUCINATION GUARDRAIL ═══════
+If you do not have enough information to cite a specific section with confidence,
+say "Refer to applicable BBMP Building Bye-laws, 2003" instead of inventing a section number.
+Never cite case law or statutes not listed above.
+
+═══════ CASE DATA ═══════
 Violation ID: ${violation.id}
 Type: ${violation.type}
 Address: ${violation.address}
 Survey Number: ${violation.survey_no}
 Zone: ${violation.zone}
-Detected Date: ${violation.detected_date}
-Detection Confidence: ${violation.confidence}%
-Area (sq ft): ${violation.area}
-Height Delta (m): ${violation.height_delta}
+Detected: ${violation.detected_date}
+AI Confidence: ${violation.confidence}%
+Area: ${violation.area} sq.ft
+Height Delta: ${violation.height_delta} m
 Last Approved Year: ${violation.last_approved_year}
 Owner: ${violation.owner_name}
 Ward: ${violation.ward}
-Penalty (INR lakh): ${violation.penalty}
+Penalty Estimate: Rs ${violation.penalty} lakh
 
-Write a formal BBMP enforcement notice that:
-1. Clearly describes the violation using the supplied facts.
-2. References the legal basis under BBMP Act Section 321.
-3. Directs the owner to stop work immediately and respond within 7 days.
-4. Explains the enforcement risk and penalty exposure.
-5. Uses professional language suitable for officer review and service.
+═══════ REQUIRED NOTICE STRUCTURE ═══════
+Produce a formal English notice (Kannada translation can be generated later via a /translate flow) using exactly this structure:
 
-Keep it concise but complete. Use a notice-like format with a greeting, facts, directives, deadline, and sign-off.
+NOTICE NUMBER: [BBMP/INFRAWATCH/YYYY/MM/####]
+DATE: [today's date in formal Indian English]
+TO: [owner name], [property address]
+PROPERTY ADDRESS: [full address with ward + pincode]
+NATURE OF VIOLATION: [2-3 sentences citing evidence]
+LEGAL PROVISIONS CITED: [list specific sections from framework above]
+REQUIRED ACTION: [numbered list]
+COMPLIANCE DEADLINE: [today + 7/15/30 days based on severity]
+CONSEQUENCES OF NON-COMPLIANCE: [cite specific sections]
+ISSUING OFFICER: [e.g. "Assistant Executive Engineer, BBMP ${violation.ward} Ward"]
 
-Template structure:
+Use formal Indian-English legalese. Be specific, not generic.
+
+Reference template structure:
 ${filledTemplate}
 
 Return only the final notice text.`;

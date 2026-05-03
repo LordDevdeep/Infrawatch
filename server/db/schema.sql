@@ -140,6 +140,22 @@ CREATE TABLE IF NOT EXISTS otp_tokens (
   used INTEGER DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS citizen_reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  reporter_name TEXT,
+  reporter_phone TEXT,
+  reporter_email TEXT,
+  description TEXT NOT NULL,
+  address TEXT,
+  ward TEXT,
+  lat REAL,
+  lng REAL,
+  photo_data_url TEXT,
+  status TEXT CHECK(status IN ('pending','under_review','linked_to_case','dismissed')) DEFAULT 'pending',
+  linked_violation_id TEXT REFERENCES violations(id),
+  created_at DATETIME DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_violations_ward ON violations(ward);
 CREATE INDEX IF NOT EXISTS idx_violations_status ON violations(status);
 CREATE INDEX IF NOT EXISTS idx_violations_city ON violations(city);

@@ -201,7 +201,7 @@ export default function AnalyticsPage({ onNav }) {
                   <td style={{ padding: '8px 14px', fontFamily: 'Space Mono', fontSize: 11, color: 'var(--bl)' }}>Rs {ward.revenue} Cr</td>
                   <td style={{ padding: '8px 14px' }}>
                     <button className="btn bs" style={{ fontSize: 11, padding: '3px 8px' }} onClick={() => { setSelectedWard(ward); onNav('violations'); }}>
-                      Open {'->'}
+                      Open →
                     </button>
                   </td>
                 </tr>

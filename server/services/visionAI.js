@@ -125,6 +125,17 @@ async function rawGroqCall(prompt, imageDataUrls = []) {
  *      OTHER provider is configured, silently fall back and retry
  *   3. Log which provider answered so we can see it in server logs
  */
+const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 30000;
+
+function withTimeout(promise, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} exceeded ${AI_TIMEOUT_MS / 1000}s timeout`)), AI_TIMEOUT_MS)
+    ),
+  ]);
+}
+
 async function callAI(prompt, imageDataUrls = []) {
   const config = getProviderConfig();
   const primary = config.provider;
@@ -135,21 +146,36 @@ async function callAI(prompt, imageDataUrls = []) {
 
   try {
     const text = primary === 'gemini'
-      ? await rawGeminiCall(prompt, imageDataUrls)
-      : await rawGroqCall(prompt, imageDataUrls);
-    console.log(`[AI] ✓ ${primary} answered`);
-    return text;
+      ? await withTimeout(rawGeminiCall(prompt, imageDataUrls), 'Gemini')
+      : await withTimeout(rawGroqCall(prompt, imageDataUrls), 'Groq');
+    console.log(`[AI] ✓ ${primary} answered in-budget`);
+    return { text, provider: primary, fallback: false };
   } catch (err) {
-    if (!secondaryConfigured || !isRetryableProviderError(err)) {
+    const isTimeout = /timeout/i.test(err.message);
+    const isRetryable = isTimeout || isRetryableProviderError(err);
+
+    if (!secondaryConfigured || !isRetryable) {
+      console.error(`[AI] ✗ ${primary} failed unrecoverably:`, err.message);
       throw err;
     }
-    console.warn(`[AI] ⚠ ${primary} failed (${String(err.message).slice(0, 80)}...) → failing over to ${secondary}`);
-    const text = secondary === 'gemini'
-      ? await rawGeminiCall(prompt, imageDataUrls)
-      : await rawGroqCall(prompt, imageDataUrls);
-    console.log(`[AI] ✓ ${secondary} answered (fallback)`);
-    return text;
+    console.warn(`[AI] ⚠ ${primary} failed (${isTimeout ? 'TIMEOUT' : 'RETRYABLE'}: ${String(err.message).slice(0, 120)}...) → failing over to ${secondary}`);
+    try {
+      const text = secondary === 'gemini'
+        ? await withTimeout(rawGeminiCall(prompt, imageDataUrls), 'Gemini')
+        : await withTimeout(rawGroqCall(prompt, imageDataUrls), 'Groq');
+      console.log(`[AI] ✓ ${secondary} answered (fallback)`);
+      return { text, provider: secondary, fallback: true };
+    } catch (fbErr) {
+      console.error(`[AI] ✗ Both providers failed. Primary: ${err.message}. Fallback: ${fbErr.message}`);
+      throw new Error(`Both AI providers unavailable. ${primary}: ${err.message}. ${secondary}: ${fbErr.message}`);
+    }
   }
+}
+
+// Backward compat — legacy paths that expect a plain string
+async function callAIText(prompt, imageDataUrls = []) {
+  const result = await callAI(prompt, imageDataUrls);
+  return typeof result === 'string' ? result : result.text;
 }
 
 /**
@@ -157,11 +183,11 @@ async function callAI(prompt, imageDataUrls = []) {
  * Both now route through the same `callAI` dispatcher with auto-fallback.
  */
 async function callGroqVision(prompt, imageDataUrls = []) {
-  return callAI(prompt, imageDataUrls);
+  return callAIText(prompt, imageDataUrls);
 }
 
 async function callTextAI(prompt) {
-  return callAI(prompt, []);
+  return callAIText(prompt, []);
 }
 
 /**
@@ -412,37 +438,95 @@ export function calculatePenaltyFromAnalysis(analysisResult, zoneType = 'Residen
 
 /**
  * CORE FEATURE 5: Generate AI Legal Notice from Analysis
+ *
+ * The prompt is grounded in specific Indian municipal law so the AI does not
+ * invent legal citations. An anti-hallucination clause requires the model to
+ * fall back to a generic "Refer to applicable BBMP bye-laws" phrasing if it
+ * is uncertain about a specific section number.
  */
 export async function generateLegalNoticeFromAnalysis({ violation, analysisResult, penaltyCalculation }) {
-  const prompt = `You are a legal drafting expert for BBMP municipal enforcement. Generate a formal enforcement notice based on AI satellite imagery analysis.
+  const today = new Date();
+  const noticeNumber = `BBMP/INFRAWATCH/${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,'0')}/${String(Math.abs(hashCode(violation.id)) % 10000).padStart(4,'0')}`;
+  const formattedDate = today.toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
 
-VIOLATION DETAILS:
-- Reference: ${violation.id}
-- Owner: ${violation.owner_name || 'Property Owner'}
-- Address: ${violation.address}
-- Survey No: ${violation.survey_no || 'N/A'}
-- Ward: ${violation.ward}
-- Zone: ${violation.zone || 'N/A'}
+  const prompt = `You are a senior BBMP legal draftsman generating a formal municipal enforcement notice for unauthorized construction in Bengaluru, India.
 
-AI ANALYSIS FINDINGS:
-- Violation Type: ${analysisResult.primaryViolationType}
-- Confidence: ${analysisResult.overallConfidence}%
-- Risk Level: ${analysisResult.riskLevel}
-- Detected Area: ${analysisResult.totalEstimatedAreaSqFt} sq.ft
-- Visual Evidence: ${(analysisResult.visualEvidence || []).join('; ')}
+═══════ APPLICABLE LEGAL FRAMEWORK ═══════
+You MUST cite from (and only from) these Indian statutes:
 
-PENALTY CALCULATION:
-- Estimated Penalty: Rs ${penaltyCalculation.calculatedPenaltyINR.toLocaleString('en-IN')} (${penaltyCalculation.calculatedPenaltyLakhs} Lakhs)
-- Legal Basis: ${penaltyCalculation.legalBasis}
-- Calculation: ${penaltyCalculation.formula}
+1. KARNATAKA MUNICIPAL CORPORATIONS ACT, 1976
+   • Section 308 — Building without sanctioned plan / deviation from plan
+   • Section 321 — Power to demolish unauthorized construction; monetary penalty
+   • Section 322 — Stop-work notice for ongoing unauthorized construction
+   • Section 321A — Compounding fee provisions (where permissible)
 
-Generate a formal legal notice. Return as JSON:
+2. BBMP BUILDING BYE-LAWS, 2003
+   • Bye-law 2.2 — Setback requirements by plot size
+   • Bye-law 2.5 — Floor Area Ratio (FAR) and maximum permissible height
+   • Bye-law 3.0 — Change of land use / occupancy restrictions
+   • Bye-law 4.6 — Mandatory approval before commencement
+
+3. KARNATAKA TOWN AND COUNTRY PLANNING ACT, 1961
+   • Section 14 — Planning authority control over development
+   • Section 15 — Penalty for unauthorized development
+   • Section 76-FF — Offences & prosecution
+
+═══════ ANTI-HALLUCINATION GUARDRAIL ═══════
+If you are NOT confident about a specific section number, DO NOT invent one.
+Instead, use the phrase: "Refer to applicable BBMP Building Bye-laws, 2003".
+Never cite statutes, sections, or case law not listed above.
+
+═══════ CASE DATA ═══════
+Notice Number:   ${noticeNumber}
+Date:            ${formattedDate}
+Case Reference:  ${violation.id}
+Owner:           ${violation.owner_name || 'Property Owner (Unknown)'}
+Address:         ${violation.address}
+Survey No:       ${violation.survey_no || 'To be verified from revenue records'}
+Ward:            ${violation.ward}
+Zone:            ${violation.zone || 'To be verified from master plan'}
+Last Approval:   ${violation.last_approved_year || 'No approval on record'}
+
+═══════ AI DETECTION FINDINGS ═══════
+Violation Type:       ${analysisResult.primaryViolationType}
+AI Confidence:        ${analysisResult.overallConfidence}%
+Risk Assessment:      ${analysisResult.riskLevel}
+Affected Area:        ${analysisResult.totalEstimatedAreaSqFt} sq.ft
+Visual Evidence:      ${(analysisResult.visualEvidence || []).join('; ')}
+Narrative:            ${analysisResult.analysisNarrative || 'See attached report'}
+
+═══════ PENALTY CALCULATION ═══════
+Estimated Penalty: Rs ${penaltyCalculation.calculatedPenaltyINR.toLocaleString('en-IN')} (${penaltyCalculation.calculatedPenaltyLakhs} Lakhs)
+Basis:             ${penaltyCalculation.legalBasis}
+Formula:           ${penaltyCalculation.formula}
+
+═══════ REQUIRED OUTPUT FORMAT ═══════
+Return VALID JSON ONLY (no markdown fences). The noticeContent MUST follow this exact structure:
+
+NOTICE NUMBER: [...]
+DATE: [...]
+TO: [owner name + address]
+PROPERTY ADDRESS: [full address including ward + pincode]
+NATURE OF VIOLATION: [describe in 2-3 sentences, cite evidence]
+LEGAL PROVISIONS CITED: [list specific sections from the framework above]
+REQUIRED ACTION: [numbered list of what the owner must do]
+COMPLIANCE DEADLINE: [date = today + 7/15/30 days based on severity]
+CONSEQUENCES OF NON-COMPLIANCE: [demolition under Sec 321, prosecution under 76-FF, etc.]
+ISSUING OFFICER: [e.g., "Assistant Executive Engineer, BBMP ${violation.ward} Ward"]
+
+JSON schema:
 {
-  "noticeType": "First Warning",
-  "noticeContent": "Full notice text with proper legal formatting",
-  "keyDirectives": ["directive 1", "directive 2"],
+  "noticeNumber": "${noticeNumber}",
+  "noticeType": "First Warning" | "Show Cause" | "Stop Work Order" | "Demolition Order",
+  "noticeContent": "full formal English text following the structure above, with proper paragraphs and numbered lists",
+  "legalSectionsCited": ["Karnataka Municipal Corporations Act, 1976 - Section 321", "BBMP Building Bye-laws, 2003 - Bye-law 2.2", "..."],
+  "keyDirectives": ["Cease all construction activity immediately", "Produce sanctioned building plan within 7 days", "..."],
   "responseDeadlineDays": 7,
-  "escalationWarning": "what happens if not complied"
+  "complianceDeadlineDate": "YYYY-MM-DD (today + responseDeadlineDays)",
+  "consequencesIfIgnored": "specific legal consequences with section references",
+  "issuingOfficerTitle": "Assistant Executive Engineer, BBMP ${violation.ward} Ward",
+  "kannadaTranslationAvailable": true,
+  "kannadaTranslationNote": "A Kannada translation of this notice can be generated on demand via the /translate endpoint."
 }`;
 
   const text = await callTextAI(prompt);
@@ -454,7 +538,18 @@ Generate a formal legal notice. Return as JSON:
     caseReference: violation.id,
     issuedTo: violation.owner_name || 'Property Owner',
     propertyAddress: violation.address,
+    noticeNumber: parsed.noticeNumber || noticeNumber,
   };
+}
+
+// Deterministic hash for notice-number generation
+function hashCode(str) {
+  let h = 0;
+  for (let i = 0; i < String(str).length; i++) {
+    h = ((h << 5) - h) + String(str).charCodeAt(i);
+    h |= 0;
+  }
+  return h;
 }
 
 /**
