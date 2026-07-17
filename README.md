@@ -1,3 +1,5 @@
+[![INFRAWATCH](https://github.com/LordDevdeep/Infrawatch/raw/main/client/public/icon.svg)](/LordDevdeep/Infrawatch/blob/main/client/public/icon.svg)
+
 # InfraWatch
 
 **Satellite-based detection of illegal construction, with an SLA-tracked enforcement workflow, built for Indian municipal corporations.**
